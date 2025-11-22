@@ -213,8 +213,12 @@ def RAG(docs, query):
         db = FAISS.from_documents(text, embeddings)
         db.save_local(DB_FAISS_PATH)
 
-        #setup LLM
-        llm = ChatOpenAI(base_url='http://127.0.0.1:1234', api_key="lm-studio")
+        #setup LLM (LM Studio/OpenAI compatible)
+        llm = ChatOpenAI(
+            base_url=os.getenv("LMSTUDIO_BASE_URL", os.getenv("OPENAI_BASE_URL", "http://127.0.0.1:1234/v1")),
+            api_key=os.getenv("LMSTUDIO_API_KEY", os.getenv("OPENAI_API_KEY", "lm-studio")),
+            model=os.getenv("LMSTUDIO_MODEL", os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")),
+        )
 
         qa_chain = ConversationalRetrievalChain.from_llm(
             llm,

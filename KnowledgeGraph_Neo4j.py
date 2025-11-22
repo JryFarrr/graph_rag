@@ -76,9 +76,9 @@ class RAG_Graph:
         # refresh_schema triggers APOC usage; disable to avoid requiring APOC plugin
         self.graph = Neo4jGraph(refresh_schema=False)
         self.llm = ChatOpenAI(
-            base_url="http://127.0.0.1:1234",
-            api_key=os.getenv("LMSTUDIO_API_KEY", "lm-studio"),
-            model="pestova/deepseek-coder-1.3b-function-calling-v1",
+            base_url=os.getenv("LMSTUDIO_BASE_URL", os.getenv("OPENAI_BASE_URL", "http://127.0.0.1:1234/v1")),
+            api_key=os.getenv("LMSTUDIO_API_KEY", os.getenv("OPENAI_API_KEY", "lm-studio")),
+            model=os.getenv("LMSTUDIO_MODEL", os.getenv("OPENAI_MODEL", "dqwen2.5-7b-instruct")),
             temperature=0.2,
         )
 
@@ -98,7 +98,14 @@ class RAG_Graph:
         llm_transformer = LLMGraphTransformer(llm=self.llm)
 
         # convert documents into graph structure using current API
-        graph_documents = llm_transformer.convert_to_graph_documents(texts)
+        try:
+            # LLM must respond with proper OpenAI-compatible payload; otherwise LangChain raises TypeError
+            graph_documents = llm_transformer.convert_to_graph_documents(texts)
+        except TypeError as exc:
+            raise RuntimeError(
+                "Failed to parse LLM response while extracting graph data. "
+                "Check LM Studio/OpenAI base_url, model name, and that the server is running."
+            ) from exc
 
         self.graph.add_documents(
             graph_documents,
